@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 import prisma from '../utils/prisma';
 import { config } from '../config/config';
+import getZodErrorMessage from '../utils/getZodErrorMessage';
 
 const signupSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
@@ -57,9 +58,16 @@ export const signup = async (
       },
     });
   } catch (error) {
-    return res.status(400).json({ message: 'Invalid credentials' });
+    if (error instanceof ZodError) {
+        const errorMessage= getZodErrorMessage(error);
+       
+          
+        return res.status(400).json({ message: errorMessage });
+      }
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
   }
-};
+
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
