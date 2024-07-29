@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import {
@@ -27,7 +27,12 @@ import {
   Loader,
   AlertTriangle,
   Pencil,
-  MoveHorizontal
+  MoveHorizontal,
+  CircleHelp,
+  Sparkles,
+  Share2,
+  BellDot,
+  ChevronsRight,
 } from "lucide-react";
 interface Task {
   id: string;
@@ -85,7 +90,7 @@ const initialTasks: TaskBoard = {
   ],
   IN_PROGRESS: [
     {
-      id: "2",
+      id: "4",
       title: "Design Home Page UI",
       description:
         "Develop and integrate user authentication using email and password.",
@@ -95,7 +100,7 @@ const initialTasks: TaskBoard = {
       updatedAt: " 1 hr ago",
     },
     {
-      id: "3",
+      id: "5",
       title: "Conduct User Feedback Survey",
       description: "Collect and analyze user feedback to improve app features.",
       status: "IN_PROGRESS",
@@ -106,7 +111,7 @@ const initialTasks: TaskBoard = {
   ],
   UNDER_REVIEW: [
     {
-      id: "4",
+      id: "6",
       title: "Integrate Cloud Storage",
       description: "Enable cloud storage for note backup and synchronization.",
       status: "UNDER_REVIEW",
@@ -117,7 +122,7 @@ const initialTasks: TaskBoard = {
   ],
   COMPLETED: [
     {
-      id: "5",
+      id: "7",
       title: "Test Cross-browser Compatibility",
       description:
         "Ensure the app works seamlessly across different web browsers.",
@@ -129,20 +134,17 @@ const initialTasks: TaskBoard = {
   ],
 };
 
-const TaskCard: React.FC<{
+interface TaskCardProps {
   task: Task;
   index: number;
-  moveTask: (
-    dragIndex: number,
-    hoverIndex: number,
-    sourceStatus: Status,
-    targetStatus: Status
-  ) => void;
+  moveTask: (draggedId: string, sourceStatus: Status, targetStatus: Status, targetIndex: number) => void;
   onEditTask: (task: Task) => void;
-}> = ({ task, index, moveTask, onEditTask }) => {
+}
+
+const TaskCard: React.FC<TaskCardProps> = ({ task, index, moveTask, onEditTask }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag({
-    type: "TASK",
+    type: 'TASK',
     item: { id: task.id, status: task.status, index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -150,8 +152,8 @@ const TaskCard: React.FC<{
   });
 
   const [, drop] = useDrop({
-    accept: "TASK",
-    hover: (item: DragItem, monitor) => {
+    accept: 'TASK',
+    hover: (item: { id: string; status: Status; index: number }, monitor) => {
       if (!ref.current) {
         return;
       }
@@ -165,10 +167,9 @@ const TaskCard: React.FC<{
       }
 
       const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY =
-        (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
-      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+      const hoverClientY = (clientOffset?.y ?? 0) - hoverBoundingRect.top;
 
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;
@@ -177,8 +178,7 @@ const TaskCard: React.FC<{
         return;
       }
 
-      moveTask(dragIndex, hoverIndex, sourceStatus, targetStatus);
-
+      moveTask(item.id, sourceStatus, targetStatus, hoverIndex);
       item.index = hoverIndex;
       item.status = targetStatus;
     },
@@ -189,6 +189,7 @@ const TaskCard: React.FC<{
   return (
     <div
       ref={ref}
+      onClick={() => onEditTask(task)}
       className={`bg-[#F9F9F9] border-2 border-[#DEDEDE] p-4 rounded-md shadow mb-2 ${
         isDragging ? "opacity-50" : ""
       } w-full min-h-[200px] h-fit`}
@@ -210,18 +211,17 @@ const TaskCard: React.FC<{
         </span>
         {task.deadline && (
           <span
-            suppressHydrationWarning
+           
             style={{ fontSize: "0.8rem" }}
             className="text-xs flex font-semibold items-center text-gray-500"
           >
             <Clock size={24} className="mr-2" />
-            <span>{new Date(task.deadline).getFullYear()}</span> -{" "}
-            <span>{new Date().getMonth()}</span> -{" "}
-            <span>{new Date().getDate()}</span>
+            <span  suppressHydrationWarning>{new Date(task.deadline).toLocaleDateString()}</span>
           </span>
         )}
         {task.updatedAt && (
           <span
+          suppressHydrationWarning
             style={{ fontSize: "0.8rem" }}
             className="text-xs flex font-medium items-center text-gray-500"
           >
@@ -233,35 +233,32 @@ const TaskCard: React.FC<{
   );
 };
 
-const Column: React.FC<{
+
+
+interface ColumnProps {
   status: Status;
   tasks: Task[];
-  moveTask: (
-    dragIndex: number,
-    hoverIndex: number,
-    sourceStatus: Status,
-    targetStatus: Status
-  ) => void;
+  moveTask: (draggedId: string, sourceStatus: Status, targetStatus: Status, targetIndex: number) => void;
   onAddNew: () => void;
   onEditTask: (task: Task) => void;
-}> = ({ status, tasks, moveTask, onAddNew, onEditTask }) => {
+}
+
+const Column: React.FC<ColumnProps> = ({ status, tasks, moveTask, onAddNew, onEditTask }) => {
   const [, drop] = useDrop({
-    accept: "TASK",
-    drop: (item: DragItem) => {
-      const sourceStatus = item.status;
-      if (sourceStatus !== status) {
-        moveTask(item.index, tasks.length, sourceStatus, status);
+    accept: 'TASK',
+    drop: (item: { id: string, status: Status }, monitor) => {
+      const didDrop = monitor.didDrop();
+      if (didDrop) {
+        return;
       }
+      moveTask(item.id, item.status, status, tasks.length);
     },
   });
 
   return (
     <div ref={drop} className="bg-[#F9F9F9] p-4 rounded-lg min-w-96 w-fit">
       <h2 className="font-bold mb-4 flex items-center justify-between text-gray-700">
-        {status.replace("_", " ")}
-        <span className="text-gray-400">
-          <Menu size={20} className="mr-2" />
-        </span>
+        {status.replace('_', ' ')}
       </h2>
       <div className="min-h-[100px] flex flex-col gap-3">
         {tasks.map((task, index) => (
@@ -270,7 +267,7 @@ const Column: React.FC<{
             task={task}
             index={index}
             moveTask={moveTask}
-            onEdit={() => onEditTask(task)}
+            onEditTask={onEditTask}
           />
         ))}
       </div>
@@ -284,6 +281,7 @@ const Column: React.FC<{
     </div>
   );
 };
+
 
 const TaskModal: React.FC<{
   isOpen: boolean;
@@ -303,8 +301,15 @@ const TaskModal: React.FC<{
     <div className="fixed inset-y-0 right-0 w-[35vw] bg-white shadow-lg p-6 overflow-y-auto">
       <div className="flex justify-between  mb-4">
         <div className="flex gap-4 items-center">
-          <X onClick={onClose} size={20} className="text-gray-500 mr-2 hover:cursor-pointer" />
-          <MoveHorizontal size={20} className="text-gray-500 mr-2 transform rotate-45 hover:cursor-pointer" />
+          <X
+            onClick={onClose}
+            size={20}
+            className="text-gray-500 mr-2 hover:cursor-pointer"
+          />
+          <MoveHorizontal
+            size={20}
+            className="text-gray-500 mr-2 transform rotate-45 hover:cursor-pointer"
+          />
         </div>
         <div className=" flex justify-between gap-2 items-center">
           <button className="text-gray-500 bg-gray-200 p-2 rounded-md hover:text-gray-700 flex items-center gap-1">
@@ -386,8 +391,12 @@ const TaskModal: React.FC<{
         <Plus size={20} className="mr-2" />
         Add custom property
       </div>
-      <div className="w-full border-b mt-8"/>
-<input type="text" placeholder="Start writing, or drag your own files here." className="w-full p-2 mb-6 focus:outline-none placeholder:text-gray-400 text-gray-400 text-base mt-4" />
+      <div className="w-full border-b mt-8" />
+      <input
+        type="text"
+        placeholder="Start writing, or drag your own files here."
+        className="w-full p-2 mb-6 focus:outline-none placeholder:text-gray-400 text-gray-400 text-base mt-4"
+      />
     </div>
   );
 };
@@ -397,15 +406,38 @@ const TaskBoard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
+  const moveTask = useCallback((draggedId: string, sourceStatus: Status, targetStatus: Status, targetIndex: number) => {
+    setTaskBoard((prevBoard) => {
+      const newBoard = { ...prevBoard };
+      
+      // Find and remove the task from the source column
+      const sourceColumn = [...newBoard[sourceStatus]];
+      const taskIndex = sourceColumn.findIndex(task => task.id === draggedId);
+      if (taskIndex === -1) return prevBoard;
+      const [movedTask] = sourceColumn.splice(taskIndex, 1);
+      newBoard[sourceStatus] = sourceColumn;
+
+      // Update the task's status
+      movedTask.status = targetStatus;
+
+      // Insert the task into the target column
+      const targetColumn = [...newBoard[targetStatus]];
+      targetColumn.splice(targetIndex, 0, movedTask);
+      newBoard[targetStatus] = targetColumn;
+
+      return newBoard;
+    });
+  }, []);
+
   const handleAddNew = (status: Status) => {
     setIsModalOpen(true);
     setEditingTask({
-      id: "",
-      title: "",
-      description: "",
+      id: Date.now().toString(),
+      title: '',
+      description: '',
       status,
-      priority: "MEDIUM",
-      deadline: "",
+      priority: 'MEDIUM',
+      deadline: '',
     });
   };
 
@@ -413,45 +445,15 @@ const TaskBoard: React.FC = () => {
     setIsModalOpen(true);
     setEditingTask(task);
   };
-  const moveTask = useCallback(
-    (
-      dragIndex: number,
-      hoverIndex: number,
-      sourceStatus: Status,
-      targetStatus: Status
-    ) => {
-      setTaskBoard((prevBoard) => {
-        const newBoard = { ...prevBoard };
-        const sourceColumn = [...newBoard[sourceStatus]];
-        const targetColumn =
-          sourceStatus === targetStatus
-            ? sourceColumn
-            : [...newBoard[targetStatus]];
 
-        const [removedTask] = sourceColumn.splice(dragIndex, 1);
-        targetColumn.splice(hoverIndex, 0, {
-          ...removedTask,
-          status: targetStatus,
-        });
-
-        newBoard[sourceStatus] = sourceColumn;
-        newBoard[targetStatus] = targetColumn;
-
-        return newBoard;
-      });
-    },
-    []
-  );
-  const handleSaveTask = (task: Task) => {
+  const handleSaveTask = (updatedTask: Task) => {
     setTaskBoard((prevBoard) => {
       const newBoard = { ...prevBoard };
       if (editingTask && editingTask.id) {
         // Update existing task
-        newBoard[editingTask.status] = newBoard[editingTask.status].filter(
-          (t) => t.id !== editingTask.id
-        );
+        newBoard[editingTask.status] = newBoard[editingTask.status].filter(t => t.id !== editingTask.id);
       }
-      newBoard[task.status].push(task);
+      newBoard[updatedTask.status].push(updatedTask);
       return newBoard;
     });
     setIsModalOpen(false);
@@ -460,8 +462,8 @@ const TaskBoard: React.FC = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen bg-gray-100">
-        <aside className="w-72 bg-indigo-800 p-6 flex flex-col text-white">
+      <div className="flex h-screen relative bg-gray-100">
+        <aside className="w-72 sticky left-0 top-0 bg-white p-6 flex flex-col text-gray-400 ">
           <div className="flex items-center mb-8">
             <img
               src="/avatar.png"
@@ -470,64 +472,142 @@ const TaskBoard: React.FC = () => {
             />
             <span className="font-semibold">Joe Gardner</span>
           </div>
-          <nav className="flex-grow space-y-2">
+          <div className="flex justify-between items-center mb-8  ">
+            <span className="flex justify-center items-center gap-2 text-gray-400">
+              <BellDot size={20} className="mr-3" />
+              <Loader size={20} className="mr-3" />
+              <ChevronsRight size={20} className="mr-3" />
+            </span>
+            
+              <button className="bg-transparent px-3 py-2 rounded-md text-gray-600 bg-[#F4F4F4] flex gap-2 items-center">
+                Logout
+              </button>
+
+          </div>
+          <nav className="flex-grow flex flex-col gap-4">
             <a
               href="#"
-              className="flex items-center py-2 px-4 bg-indigo-900 rounded"
+              className="flex items-center font-medium py-2 px-4 focus:bg-gray-100  hover:bg-gray-100 focus:border focus:border-gray-200  rounded"
             >
               <Calendar size={20} className="mr-3" />
               Home
             </a>
             <a
               href="#"
-              className="flex items-center py-2 px-4 hover:bg-indigo-700 rounded"
+              className="flex items-center font-medium py-2 px-4 focus:bg-gray-100  hover:bg-gray-100 focus:border focus:border-gray-200  rounded"
             >
               <LayoutGrid size={20} className="mr-3" />
               Boards
             </a>
             <a
               href="#"
-              className="flex items-center py-2 px-4 hover:bg-indigo-700 rounded"
+              className="flex items-center font-medium py-2 px-4  focus:bg-gray-100  hover:bg-gray-100 focus:border focus:border-gray-200  rounded"
             >
               <Settings size={20} className="mr-3" />
               Settings
             </a>
             <a
               href="#"
-              className="flex items-center py-2 px-4 hover:bg-indigo-700 rounded"
+              className="flex items-center font-medium py-2 px-4  focus:bg-gray-100  hover:bg-gray-100 focus:border focus:border-gray-200  rounded"
             >
               <Users size={20} className="mr-3" />
               Teams
             </a>
             <a
               href="#"
-              className="flex items-center py-2 px-4 hover:bg-indigo-700 rounded"
+              className="flex items-center font-medium py-2 px-4  focus:bg-gray-100  hover:bg-gray-100 focus:border focus:border-gray-200  rounded"
             >
               <BarChart2 size={20} className="mr-3" />
               Analytics
             </a>
-          </nav>
-          <button
+            <button
             onClick={() => {
               setIsModalOpen(true);
               setEditingTask(undefined);
             }}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700"
+            className="w-full bg-indigo-600 text-white py-3 px-4 flex gap-2 items-center justify-center rounded-md hover:bg-indigo-700"
           >
             Create new task
+            <Plus
+              size={24}
+              className="mr-2 bg-white text-black rounded-full p-1"
+            />
           </button>
-          <button className="w-full mt-4 bg-indigo-700 text-white py-2 px-4 rounded flex items-center justify-center">
-            <Download size={20} className="mr-2" />
-            Download the app
+          </nav>
+         
+          <button className="w-full mt-4 bg-gray-100 py-2 px-2 rounded flex gap-3 items-center justify-center">
+            <Download size={25} />
+            <div className="flex flex-col gap-1 items-center justify-center">
+              <span className="text-slate-500 text-base font-medium">Download the app </span>
+              <span style={{fontSize:'.7rem'}} className="text-slate-600 font-light -ml-5 ">
+                Get the full experience
+              </span>
+            </div>
           </button>
         </aside>
         <main className="flex-1 p-8 px-8 relative ">
           <header className="mb-8">
-            <h1 className="text-3xl font-bold mb-4 text-gray-800">
-              Good morning, Joe!
-            </h1>
-            <div className="flex space-x-4 mb-4">
-              <div className="relative flex-grow">
+            <div className="flex items-center justify-between">
+              <h1 className="text-4xl font-semibold mb-4 text-gray-800">
+                Good morning, Joe!
+              </h1>
+              <div className="flex gap-2 mb-4 text-gray-800">
+                Help & Feedback
+                <CircleHelp size={20} />
+              </div>
+            </div>
+            <div className="flex justify-center items-center gap-4 ">
+              <div className="bg-white p-2 rounded-lg mb-4 h-[10rem] flex-1 flex gap-2 justify-center items-center">
+                <img
+                  src="/header-tags.png"
+                  alt="header-tags"
+                  className="w-20 h-16"
+                />
+                <div className="flex flex-col gap-2 m-0">
+                  <h3 className="text-gray-500 font-semibold">
+                    Introducing tags
+                  </h3>
+                  <p className="text-gray-500 font-normal">
+                    Easily categorize and find your notes by adding tags. Keep
+                    your workspace clutter-free and efficient.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white p-2 rounded-lg mb-4 h-[10rem] flex-1 flex gap-2 justify-center items-center">
+                <img
+                  src="/header-share.png"
+                  alt="header-tags"
+                  className="w-20 h-16"
+                />
+                <div className="flex flex-col gap-2 m-0">
+                  <h3 className="text-gray-500 font-semibold">
+                    Share Notes Instantly
+                  </h3>
+                  <p className="text-gray-500 font-normal">
+                    Effortlessly share your notes with others via email or link.
+                    Enhance collaboration with quick sharing options.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-white p-2 rounded-lg mb-4 h-[10rem] flex-1 flex gap-2 justify-center items-center">
+                <img
+                  src="/header-access.png"
+                  alt="header-tags"
+                  className="w-20 h-16"
+                />
+                <div className="flex flex-col gap-2 m-0">
+                  <h3 className="text-gray-500 font-semibold">
+                    Access Anywhere
+                  </h3>
+                  <p className="text-gray-500 font-normal">
+                    Sync your notes across all devices. Stay productive whether
+                    you're on your phone, tablet, or computer.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex space-x-4 mb-4 ">
+              <div className="relative flex-grow ">
                 <input
                   type="text"
                   placeholder="Search"
@@ -538,40 +618,43 @@ const TaskBoard: React.FC = () => {
                   className="absolute left-[13.5rem] top-1/2 transform -translate-y-1/2 text-gray-400"
                 />
               </div>
-              <button className="bg-gray-200 px-3 py-2 rounded-md text-gray-700 flex items-center">
-                <CalendarDays size={20} className="mr-2" />
+              <button className="bg-transparent px-3 py-2 rounded-md text-gray-500 flex gap-2 items-center">
                 Calendar view
+                <CalendarDays size={20} className="mr-2" />
               </button>
-              <button className="bg-gray-200 px-3 py-2 rounded-md text-gray-700 flex items-center">
-                <Zap size={20} className="mr-2" />
+              <button className="bg-transparent px-3 py-2 rounded-md text-gray-500 flex gap-2 items-center">
                 Automation
+                <Sparkles size={20} className="mr-2" />
               </button>
-              <button className="bg-gray-200 px-3 py-2 rounded-md text-gray-700 flex items-center">
-                <Filter size={20} className="mr-2" />
+              <button className="bg-transparent px-3 py-2 rounded-md text-gray-500 flex gap-2 items-center">
                 Filter
+                <Filter size={20} className="mr-2" />
               </button>
-              <button className="bg-gray-200 px-3 py-2 rounded-md text-gray-700 flex items-center">
-                <Share size={20} className="mr-2" />
+              <button className="bg-transparent px-3 py-2 rounded-md text-gray-500 flex gap-2 items-center">
                 Share
+                <Share2 size={20} className="mr-2" />
               </button>
               <button
                 onClick={() => {
                   setIsModalOpen(true);
                   setEditingTask(undefined);
                 }}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex gap-2 items-center"
               >
-                <Plus size={20} className="mr-2" />
                 Create new
+                <Plus
+                  size={24}
+                  className="mr-2 bg-white text-black rounded-full p-1"
+                />
               </button>
             </div>
           </header>
           <div className="flex bg-[#F9F9F9] p-4 ">
-            {(Object.keys(taskBoard) as Status[]).map((status) => (
+          {(Object.keys(taskBoard) as Status[]).map((status) => (
               <Column
                 key={status}
                 status={status}
-                tasks={taskBoard[status] || []}
+                tasks={taskBoard[status]}
                 moveTask={moveTask}
                 onAddNew={() => handleAddNew(status)}
                 onEditTask={handleEditTask}
