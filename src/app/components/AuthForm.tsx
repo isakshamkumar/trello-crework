@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 type AuthMode = 'login' | 'signup';
 
@@ -22,10 +23,13 @@ const router = useRouter();
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit =async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log(`${initialMode} submitted:`, formData);
+    const response = await axios.post(`http://localhost:5000/api/v1/auth/${initialMode}`, initialMode === 'login' ? {email: formData.email, password: formData.password} :formData);
+    if(response.data.status === "success") {
+      router.push('/');
+      localStorage.setItem('token', response.data.data.token);
+    }
   };
 
 
