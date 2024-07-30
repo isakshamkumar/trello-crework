@@ -17,6 +17,10 @@ const taskTypes_1 = require("../types/taskTypes");
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const zod_1 = require("zod");
 const getZodErrorMessage_1 = __importDefault(require("../utils/getZodErrorMessage"));
+const mongodb_1 = require("mongodb");
+const isValidObjectId = (id) => {
+    return mongodb_1.ObjectId.isValid(id);
+};
 const createTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const data = taskTypes_1.createTaskSchema.parse(req.body);
@@ -47,35 +51,36 @@ const getTasks = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.json({ status: "success", data: { tasks } });
     }
     catch (error) {
-        if (error instanceof zod_1.ZodError) {
-            const errorMessage = (0, getZodErrorMessage_1.default)(error);
-            return res.status(400).json({ message: errorMessage });
-        }
         return res.status(400).json({ message: "Something went wrong" });
     }
 });
 exports.getTasks = getTasks;
 const getTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid task ID" });
+        }
         const task = yield prisma_1.default.task.findUnique({
             where: {
                 id: req.params.id,
                 userId: req.user.id,
             },
         });
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
         res.json({ status: "success", data: { task } });
     }
     catch (error) {
-        if (error instanceof zod_1.ZodError) {
-            const errorMessage = (0, getZodErrorMessage_1.default)(error);
-            return res.status(400).json({ message: errorMessage });
-        }
         return res.status(400).json({ message: "Something went wrong" });
     }
 });
 exports.getTask = getTask;
 const updateTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid task ID" });
+        }
         const data = taskTypes_1.updateTaskSchema.parse(req.body);
         const task = yield prisma_1.default.task.update({
             where: {
@@ -97,6 +102,9 @@ const updateTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.updateTask = updateTask;
 const deleteTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid task ID" });
+        }
         yield prisma_1.default.task.delete({
             where: {
                 id: req.params.id,
@@ -106,16 +114,15 @@ const deleteTask = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         res.status(204).send();
     }
     catch (error) {
-        if (error instanceof zod_1.ZodError) {
-            const errorMessage = (0, getZodErrorMessage_1.default)(error);
-            return res.status(400).json({ message: errorMessage });
-        }
         return res.status(400).json({ message: "Something went wrong" });
     }
 });
 exports.deleteTask = deleteTask;
 const updateTaskStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid task ID" });
+        }
         const data = taskTypes_1.updateTaskStatusSchema.parse(Object.assign(Object.assign({}, req.body), { id: req.params.id }));
         const task = yield prisma_1.default.task.update({
             where: {

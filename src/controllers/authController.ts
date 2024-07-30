@@ -16,6 +16,7 @@ export const signup = async (
   req: Request,
   res: Response,
 ) => {
+  
   try {
     const { fullName, email, password } = signupSchema.parse(req.body);
 
@@ -78,6 +79,7 @@ export const login = async (
   req: Request,
   res: Response,
 ) => {
+  
   try {
     const { email, password } = loginSchema.parse(req.body);
 

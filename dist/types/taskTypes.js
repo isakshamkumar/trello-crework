@@ -10,10 +10,8 @@ exports.createTaskSchema = zod_1.z.object({
     priority: zod_1.z.nativeEnum(client_1.TaskPriority).optional(),
     deadline: zod_1.z.string().datetime().optional(),
 });
-exports.updateTaskSchema = exports.createTaskSchema.partial().extend({
-    id: zod_1.z.string().uuid(),
-});
+exports.updateTaskSchema = exports.createTaskSchema.partial();
 exports.updateTaskStatusSchema = zod_1.z.object({
-    id: zod_1.z.string().uuid(),
+    id: zod_1.z.string(),
     status: zod_1.z.nativeEnum(client_1.TaskStatus),
 });

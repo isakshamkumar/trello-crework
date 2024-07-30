@@ -9,12 +9,10 @@ export const createTaskSchema = z.object({
   deadline: z.string().datetime().optional(),
 });
 
-export const updateTaskSchema = createTaskSchema.partial().extend({
-  id: z.string().uuid(),
-});
+export const updateTaskSchema = createTaskSchema.partial();
 
 export const updateTaskStatusSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   status: z.nativeEnum(TaskStatus),
 });
 
