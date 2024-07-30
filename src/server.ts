@@ -3,6 +3,9 @@ import { config } from './config/config';
 
 const startServer = () => {
   try {
+    app.get("/",(req,res)=>{
+      res.send("Server Up!");
+    })
     app.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);
     });
