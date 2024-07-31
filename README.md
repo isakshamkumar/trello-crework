@@ -4,15 +4,15 @@
 ### Backend: 
 # Prerequisites
 Ensure you have the following installed on your machine:
-
-# Node.js
-npm or Yarn
+ Node.js
+`npm or Yarn`
 
 # build
-npm run build
+Run the command: 
+`npm run build`
 
 # start server
-npm start
+`npm start`
 
 The server should now be running at http://localhost:<port-number>.
 
