@@ -1,19 +1,23 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+
+interface User {
+  id: string;
+  fullName: string;
+  email: string;
+}
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
   error: string | null;
 }
 
-interface User {
-  id: string;
-  email: string;
-}
-
 const initialState: AuthState = {
   user: null,
+  token: typeof window!=="undefined"? localStorage.getItem('token'):"",
   isLoading: false,
   error: null,
 };
@@ -22,25 +26,31 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/login', credentials);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data);
+      const response = await axios.post('https://trello-backend-zx3d.onrender.com/api/v1/auth/login', credentials);
+      toast.success('Logged in successfully');
+      return response.data.data;
+    } catch (error:any) {
+      toast.error(error.response?.data?.message || 'Login failed');
+      return rejectWithValue(error.response?.data);
     }
   }
 );
 
 export const signup = createAsyncThunk(
   'auth/signup',
-  async (userData: { email: string; password: string }, { rejectWithValue }) => {
+  async (userData: { fullName: string; email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/auth/signup', userData);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data);
+      const response = await axios.post('https://trello-backend-zx3d.onrender.com/api/v1/auth/signup', userData);
+      toast.success('Signed up successfully');
+      return response.data.data;
+    } catch (error:any) {
+      
+      toast.error(error.response?.data?.message[0].message || 'Signup failed');
+      return rejectWithValue(error.response?.data);
     }
   }
 );
+
 
 const authSlice = createSlice({
   name: 'auth',
@@ -48,6 +58,9 @@ const authSlice = createSlice({
   reducers: {
     logout: (state) => {
       state.user = null;
+      state.token = null;
+     typeof window!=="undefined" && localStorage.removeItem('token');
+      toast.info('Logged out successfully');
     },
   },
   extraReducers: (builder) => {
@@ -58,7 +71,9 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+       typeof window!=="undefined" && localStorage.setItem('token', action.payload.token);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -70,7 +85,9 @@ const authSlice = createSlice({
       })
       .addCase(signup.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+       typeof window!=="undefined"&& localStorage.setItem('token', action.payload.token);
       })
       .addCase(signup.rejected, (state, action) => {
         state.isLoading = false;

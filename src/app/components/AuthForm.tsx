@@ -1,8 +1,12 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { login, signup } from '../store/slices/authSlice';
+import { AppDispatch } from '../store'
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import Loader from './Loader';
 
 type AuthMode = 'login' | 'signup';
 
@@ -17,30 +21,50 @@ const AuthForm: React.FC<AuthFormProps> = ({ initialMode = 'login' }) => {
     email: '',
     password: '',
   });
-const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    } else {
+      setIsLoading(false);
+    }
+  }, [user, router]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit =async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const response = await axios.post(`http://localhost:5000/api/v1/auth/${initialMode}`, initialMode === 'login' ? {email: formData.email, password: formData.password} :formData);
-    if(response.data.status === "success") {
+  const handleSubmit = async () => {
+    try {
+      if (initialMode === 'login') {
+        await dispatch(login({ email: formData.email, password: formData.password })).unwrap();
+      } else {
+        await dispatch(signup(formData)).unwrap();
+      }
       router.push('/');
-      localStorage.setItem('token', response.data.data.token);
+    } catch (error) {
+      console.error('Authentication failed:', error);
     }
   };
 
+  const handleAuthMode = () => {
+    router.push(initialMode === 'login' ? '/signup' : '/login');
+  };
 
-const handleAuthMode = () => {
-  router.push(initialMode === 'login' ? '/signup' : '/login');
-};
+  if (isLoading) {
+    return <Loader/>
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FDFDFF] to-[#B4A8FE] flex items-center justify-center">
+    <div className="min-h-[99.6vh] overflow-y-hidden bg-gradient-to-b from-[#FDFDFF] to-[#B4A8FE] flex items-center justify-center">
       <div className="bg-[#F6F6F6] py-16 px-11 rounded-lg shadow-md w-full h-fit max-w-[34rem]">
         <h1 className="text-4xl text-black text-center font-semibold mb-6">Welcome to <span className="text-[#4534AC]">Workflo</span>!</h1>
-        <form onSubmit={handleSubmit}>
+        <div >
           <div className="space-y-4">
             {initialMode === 'signup' && (
               <input
@@ -82,12 +106,13 @@ const handleAuthMode = () => {
             </div>
           </div>
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             className="w-full bg-[#766ABE] text-white py-2 rounded-md mt-6 hover:bg-[#3A2A9E] transition duration-300"
           >
             {initialMode === 'login' ? 'Login' : 'Sign up'}
           </button>
-        </form>
+        </div>
         <p className="text-center mt-8 text-base text-gray-600">
           {initialMode === 'login' ? "Don't have an account? " : "Already have an account? "}
           <button
