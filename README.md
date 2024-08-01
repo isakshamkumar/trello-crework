@@ -1,5 +1,7 @@
+### NOTE: The backend is hosted on render free service, so it goes down with inactivity, please wait a minute if u didn't see any response from the backend
 ### Trello Clone
 ### NOTE: This repository contains an Express backend project in the `main` branch and the frontend in  next js on the `FE` branch. Follow the steps below to set up and run the project.
+
 
 ### Backend: 
 # Prerequisites
